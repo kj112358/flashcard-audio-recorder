@@ -1,0 +1,180 @@
+const RecordRTC = require('recordrtc');
+const fs = require('fs');
+const csv = require('csv-parser');
+
+let currentIndex = 0;
+let flashcards = [];
+let recorder;
+let deckName;
+let backFlashcardName;
+let audioBlob;
+let audioElement = new Audio();
+let csvDelim = "\t";
+let audioStartDelim = "["
+let audioEndDelim = "]"
+// todo: 
+    // Refactor and research offline TTS (ignoring google, cordova, or other paid || keys)
+    // Double-sided card support. In-line, or split into different cards
+    // Read cards that already have audio files
+        // Strip [.*] from display, overwrite [.*] on save
+    // Config 
+        // - modify audio format & path (original should still be listenable and overwitten after save), 
+        // - toggle between in-line and split (code needs to adjust dynamically)
+        // - Read and export to anki packages (maybe later. still unsure how these are formatted.. table vs \t)
+//  
+let baseAudioPath = "./flashcard_";
+let audioFilePath = "";
+let audioFormatType = "wav"
+let audioFormat = "." + audioFormatType;
+let currentCard = {name: "", audioFile: ""};
+let blobAudioType = "audio/" + audioFormatType;
+
+document.addEventListener('DOMContentLoaded', () => {
+document.getElementById('recordButton').addEventListener('click', toggleRecording);
+document.getElementById('previousButton').addEventListener('click', previousCard);
+document.getElementById('nextButton').addEventListener('click', nextCard);
+document.getElementById('listenButton').addEventListener('click', playRecording);
+// document.getElementById('ttsButton').addEventListener('click', tts);
+
+// Add event listener for keyboard shortcuts
+document.addEventListener('keydown', (event) => {
+	if (event.code === 'Space') {
+		toggleRecording();
+	} else if (event.code === 'Enter') {
+		playRecording();
+	} else if (event.code === 'ArrowRight') {
+		nextCard();
+	} else if (event.code === 'ArrowLeft') {
+		previousCard();
+	}
+});
+
+function loadFlashcards() {
+    fs.createReadStream('flashcards.csv')
+        .pipe(csv())
+        .on('data', (row) => {
+            deckName = Object.keys(row)[0];
+	    backFlashcardName = Object.keys(row)[1];
+            frontVal = row[Object.keys(row)[0]];
+	// TODO: Regex to split frontVal into val/audioFile.
+		// Have it split csvs to do 1 card each (but still save in the backend). 
+		// Do this by %2 counter?
+		// On save, or export, also save a .txt file with the current flashcards frontName[audioFile]\tbackName[backAudioFile].
+            backVal = row[Object.keys(row)[1]];
+            flashcards.push({front: frontVal, back: backVal});
+        })
+        .on('end', () => {
+            console.log("Deck: " + deckName);
+            console.log("Flashcards: " + flashcards);
+            updateFlashcard();
+        });
+}
+// let csvDelim = "\t";
+// let audioStartDelim = "["
+// let audioEndDelim = "]"
+
+
+function getFlashcardAudioPath() {
+    // derive from csv [.*] and default to regular filePath
+    // (^.*)(\[.*\])?\t(.*)(\[.*\])?
+	// $1 = card1, $2=card1Audio, $3=card2, $4=card2Audio
+    let filePath= baseAudioPath + currentIndex + flashcards[currentIndex].front + audioFormat;
+    console.log("File path: " + filePath);
+    return filePath;
+}
+
+function updateDisplay() {
+    document.getElementById("currentFlashcardIndex").innerText = currentIndex+1;
+    document.getElementById("maxFlashcardIndex").innerText = flashcards.length;
+
+    prevDisabled = currentIndex<=0;
+    nextDisabled = currentIndex>=flashcards.length-1;
+    document.getElementById("previousButton").disabled = prevDisabled;
+    document.getElementById("nextButton").disabled = nextDisabled;
+
+}
+
+function updateFlashcard() {
+    if (currentIndex < flashcards.length) {
+            console.log("flashcards: " + flashcards + ", card: " + flashcards[currentIndex].front);
+        document.getElementById('flashcard').innerText = flashcards[currentIndex].front;
+        // Load audio file if it exists
+	audioFilePath = getFlashcardAudioPath();
+        if (fs.existsSync(audioFilePath)) {
+		console.log("audio path exists");
+                audioElement.src = audioFilePath;
+                document.getElementById("listenButton").disabled = false;
+        } else {
+		console.log("audio path not found");
+                audioElement.src = '';
+                document.getElementById("listenButton").disabled = true;
+        }
+        
+    } else {
+        document.getElementById('flashcard').innerText = "End of Flashcards";
+    }
+    updateDisplay();
+}
+
+function toggleRecording() {
+    if (!recorder) {
+        startRecording();
+    } else {
+        stopRecording();
+    }
+}
+
+function tts() {
+  const utterance = new SpeechSynthesisUtterance(flashcards[currentIndex].front);
+  speechSynthesis.speak(utterance);
+}
+
+function playRecording() {
+    if (audioElement.src) {
+        audioElement.currentTime = 0;
+        audioElement.play();
+    }
+}
+
+function startRecording() {
+    navigator.mediaDevices.getUserMedia({ audio: true })
+        .then((stream) => {
+            recorder = new RecordRTC(stream, { type: 'audio' });
+            recorder.startRecording();
+            document.getElementById('recordButton').innerText = 'Stop Recording';
+        });
+}
+
+async function stopRecording() {
+    recorder.stopRecording(async () => {
+        audioBlob = recorder.getBlob();
+        const buffer = await audioBlob.arrayBuffer();
+        fs.writeFileSync(audioFilePath, Buffer.from(buffer));
+        // recorder.save(audioFilePath);
+        document.getElementById('recordButton').innerText = 'Start Recording';
+        currentIndex++;
+        updateFlashcard();
+        recorder = null; // Reset the recorder for the next recording
+    });
+}
+
+function nextCard() {
+    if (currentIndex < flashcards.length-1) {
+        currentIndex++;
+        updateFlashcard();
+    }
+}
+
+function previousCard() {
+    if (currentIndex > 0) {
+        currentIndex-=1;
+        updateFlashcard();
+    }
+}
+
+
+
+// Load flashcards when the application starts
+loadFlashcards();
+});
+

@@ -1,0 +1,151 @@
+/* body { 
+	font-family: Arial, sans-serif; 
+	margin: 0;
+	padding: 0;
+	background-color: #f4f4f4;
+}
+#flashcard { 
+	font-size: 24px; 
+	margin: 20px; 
+}
+button { 
+	margin: 10px; 
+	padding: 10px; 
+}
+
+#app {
+  text-align: center;
+  padding: 50px;
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+  color: #333;
+}
+
+p {
+  color: #666;
+}
+ */
+
+ * {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #f0f0f0;
+}
+
+.container {
+    position: relative;
+	width: 90%;
+    max-width: 800px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 80%;
+	max-height: 600px;
+}
+
+.flashcard-container {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+#flashcard, #flashcard-edit {
+    font-size: 3em; /* Large, readable text */
+    text-align: center;
+}
+
+:focus {
+    outline: none;
+    /* box-shadow: 0 0 0 2px rgba(100, 150, 250, 0.5); soft blue glow */
+    border-radius: 4px;
+}
+
+.button-container {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+}
+
+button {
+    flex: 1;
+    margin: 0 5px;
+	margin-bottom: 20px;
+    padding: 15px;
+    font-size: 1em;
+    border: none;
+    border-radius: 5px;
+    background-color: #007bff;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+button:disabled {
+    background-color: #5ba2de; /* Darker gray for disabled state */
+    color: #ffffff; /* Keep text color white for contrast */
+    cursor: not-allowed; /* Change cursor to indicate disabled state */
+    opacity: 0.65; /* Slightly transparent to indicate it's disabled */
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+.flashcard-counter-container-old {
+	font-size: 1.2em; /* Adjust font size as needed */
+    color: #333; /* Darker gray for better contrast */
+    text-align: center; /* Center the text */
+    padding: 10px; /* Padding for better touch targets */
+    background-color: #f9f9f9; /* Light background for contrast */
+    border-radius: 5px; /* Rounded corners for a softer look */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+}
+
+.flashcard-counter-container {
+    font-size: 1.2em; /* Adjust font size as needed */
+    color: #222; /* Darker gray for better contrast */
+    position: absolute; /* Position it relatively within the card */
+    top: 10px; /* Distance from the top */
+    right: 10px; /* Distance from the right */
+}
+
+.flashcard-side {
+    font-size: 1.2em;
+    position: absolute;
+    top: 10px;
+    left: 10px;
+}
+
+@media (max-width: 450px) {
+    button {
+        padding: 0px;
+        margin-bottom: 5px;
+    }
+    .container{
+        height: 100%;
+        width: 100%;
+    }
+}
+
+.hidden {
+	display: none;
+}
+/* "position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); font-size: 12px; text-align: center;" */

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flashcard Audio Recorder</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <div class="flashcard-container">
+            <p id="flashcard"></p>
+            <input style="display: none" id="flashcard-edit"></input>
+        </div>
+        <div class="button-container">
+            <button id="recordButton" tabindex="-1">Start Recording</button>
+            <button id="listenButton" tabindex="-1">Listen</button>
+            <button id="previousButton" tabindex="-1">Previous Card</button>
+            <button id="nextButton" tabindex="-1">Next Card</button>
+        </div>
+        <!--    <button id="ttsButton">TTS</button> -->
+
+        <div class="flashcard-counter-container hidden">
+            <span id="currentFlashcardIndex"></span>
+            /
+            <span id="maxFlashcardIndex"></span>
+        </div>
+
+        <div class="flashcard-side">
+            <div class="indicator" id="front-indicator">
+                <i class="fas fa-book"></i> <!-- Icon for back -->
+            </div>
+            <div class="indicator hidden" id="back-indicator">
+                <i class="fas fa-book-open"></i> <!-- Icon for front -->
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
