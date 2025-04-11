@@ -3,6 +3,9 @@ const electronReload = require('electron-reload');
 const path = require('path');
 const logger = require('./logger');
 
+// Closes duplicate startup events on install/uninstall - https://www.electronforge.io/config/makers/squirrel.windows
+if (require('electron-squirrel-startup')) app.quit();
+
 let liveReloadEnabled = false;
 if (process.argv.includes('--live-reload')) {
   console.log('Live-reload enabled');

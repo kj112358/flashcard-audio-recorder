@@ -48,7 +48,6 @@ let audioPrefix = "sound:";
 // let blobAudioType = "audio/" + audioPathSettings.formatType.replace('.', '');
 
 // Init vars
-// let baseDir = `${dataPath}`.includes('.') ? removeAfterLastDelim(dataPath, '/') : dataPath; // Trim any filename suffixes. Ex: /app.asar
 let baseDir;
 let configFilePath;
 let prevAudioDir;
@@ -153,18 +152,29 @@ function getFormattedDate() {
   // return new Date().toISOString().replace('T', '-').slice(0, 19);
 }
 
-function removeFormattedDate(fileName) {
-  // TODO: Not the cleanest removal option, but I suppose it works for now. 
-  return removeAfterLastDelim(fileName, '_');
+function removeFormattedDate(originalString) {
+  // TODO: Still not the cleanest removal option, but I suppose it works for now. 
+  let pattern = /_\d{4}-\d{2}-\d{2}-\d{2}:\d{2}/i;
+  let formattedDate = originalString.match(pattern);
+  return removeAfterLastDelim(originalString, formattedDate);
+}
+
+function removeAfterFirstDelim(originalString, firstDelim){
+  const firstIndex = originalString.indexOf(firstDelim);
+  if (firstIndex === -1) {
+    // If there is no match, return the original string
+    return originalString;
+  }
+  return originalString.substring(0, firstIndex);
 }
 
 function removeAfterLastDelim(originalString, lastDelim) {
-  const lastIndex = originalString.lastIndexOf(lastDelim);
-  if (lastIndex === -1) {
-    // If there is no underscore, return the original string
-    return originalString;
-  }
-  return originalString.substring(0, lastIndex);
+    const lastIndex = originalString.lastIndexOf(lastDelim);
+    if (lastIndex === -1) {
+      // If there is no match, return the original string
+      return originalString;
+    }
+    return originalString.substring(0, lastIndex);
 }
 
 function unzipFile(zipFilePath, outputDir) {
@@ -262,10 +272,11 @@ async function importFile(filePath) {
   let importFileName = path.parse(importFilePath).name;
   let existingImportDir = path.join(baseDir, importFileName);
   let existingFilePath = path.join(existingImportDir, path.basename(importFilePath));
-  let newFileNameNoExt = removeAfterLastDelim(importFileName, '_') + '_' + getFormattedDate(); // /filename_yyyy-mm-dd-HH:MM:SS
+  let newFileNameNoExt = removeFormattedDate(removeAfterFirstDelim(importFileName, `.${importFileType}`)) + '_' + getFormattedDate(); // /filename_yyyy-mm-dd-HH:MM:SS
   let newFileName = `${newFileNameNoExt}.${importFileType}`;
   let localImportDir = path.join(baseDir, newFileNameNoExt); // '/ElectronRecorder/filename_yyyy-mm-dd-HH:MM:SS'
   let newFilePath = path.join(localImportDir, newFileName); // // '/ElectronRecorder/filename_yyyy-mm-dd-HH:MM:SS/filename_yyyy-mm-dd-HH:MM:SS.txt'
+  logger.debug(`importFileName ${importFileName}`);
   logger.debug(`baseDir ${baseDir} newFileNameNoExt ${newFileNameNoExt} localimportDir ${localImportDir} newFileName ${newFileName}`);
   logger.debug(`input dir ${baseDir}, importFilePath: ${importFilePath}, newFileNameNoExt: ${newFileNameNoExt}, newFilePath: ${newFilePath}`);
   // Create and copy over the importFile if there isn't an existing directory with a matching file.
@@ -797,7 +808,11 @@ function rewriteAudioFile(buffer = null, copy = false, card = currentCard) {
       recorder = null; // Reset the recorder for the next recording
       deleteAudioFile(prevFilePath);
       logger.debug(`finished ${action}`);
-    } else if (newFilePath != prevFilePath && !fs.existsSync(newFilePath)) {
+    } else {
+      if(newFilePath == prevFilePath || fs.existsSync(newFilePath) || !prevFilePath){
+        logger.info(`Not copying/renaming the audio file with prevPath ${prevFilePath} and newPath ${newFilePath}. Paths are either identical, the proposed copy already exists, or the prev path is missing.`);
+        return;
+      }
       /** TONIGHT
        * Export windows and fix linux (change installationDir in forge-config to do /opt or /usr/share so I can read/write freely)
        * Bug- left/right when listening has a delay after stopping record and auto-listening.
