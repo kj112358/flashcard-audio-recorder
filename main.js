@@ -59,7 +59,7 @@ function createMenu() {
       submenu: [
         {
           label: 'Import',
-          accelerator: 'CmdOrCtrl+I',  // Shortcut for import
+          accelerator: 'CmdOrCtrl+O',  // Shortcut for import
           click: () => {
             // Send an IPC message to renderer to trigger import
             // TODO: Remove pointless 2-way communication on init.. We can import in main and then send the file path from here.
@@ -68,7 +68,7 @@ function createMenu() {
         },
         {
           label: 'Export',
-          accelerator: 'CmdOrCtrl+E',  // Shortcut for export
+          accelerator: 'CmdOrCtrl+S',  // Shortcut for export
           click: () => {
             // Send an IPC message to renderer to trigger export
             win.webContents.send('export-file');
@@ -142,6 +142,33 @@ function createMenu() {
           },
       ],
   },
+  {
+    label: 'Help',
+    submenu: [
+        {
+            label: 'Show Keybindings',
+            click: () => {
+              // Show the keybindings window
+              const keybindingsWindow = new BrowserWindow({
+                  width: 450,
+                  height: 420,
+                  webPreferences: {
+                      contextIsolation: true,
+                      enableRemoteModule: false,
+                      nodeIntegration: false,
+                  }
+              });
+              keybindingsWindow.setMenu(null);
+              keybindingsWindow.loadFile('keybindings.html');
+        
+              // Close the help window when it loses focus
+              keybindingsWindow.on('blur', () => {
+                keybindingsWindow.close();
+            });
+            },
+        },
+    ],
+},
   ];
 
   const menuVal = Menu.buildFromTemplate(menuTemplate);

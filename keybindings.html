@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Keybindings</title>
+	<style>
+		body {
+			font-family: Arial, sans-serif;
+			background-color: #f4f4f4;
+			margin: 0;
+			padding: 0px;
+			padding-left: 10px;
+			padding-right: 10px;
+		}
+
+		h1 {
+			text-align: center;
+			color: #333;
+			font-size: 1.5em;
+		}
+
+		table {
+			width: 100%;
+			max-width: 600px;
+			margin: 20px auto;
+			border-collapse: collapse;
+			background: white;
+			border: 0px;
+			/* box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); */
+		}
+
+		th,
+		td {
+			padding: 15px;
+			text-align: left;
+			/* border: 1px solid #c0c0c0; */
+			box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+		}
+
+		th {
+			background-color: #007bff;
+			color: white;
+		}
+
+
+		/* .key {
+            background-color: #007bff;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            display: inline-block;
+        } */
+
+		td:first-child {
+			background-color: #e0e0e0;
+			padding: 15px;
+			text-align: left;
+			font-weight: bold;
+			/* Light gray background for the keybinding column */
+		}
+
+		tr:hover {
+			background-color: #cce5ff;
+		}
+
+		tr:hover td:first-child {
+			background-color: #cce5ff;
+			/* Slightly darker light blue for the keybinding column on hover */
+		}
+
+		@media (max-width: 600px) {
+			h1 {
+				font-size: 1.2em;
+			}
+
+			th,
+			td {
+				padding: 10px;
+			}
+
+			/* 
+			.key {
+				font-size: 0.9em;
+				padding: 4px 8px;
+			} */
+		}
+	</style>
+</head>
+
+<body>
+	<table>
+		<thead>
+			<tr>
+				<th>Keybinding</th>
+				<th>Action</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><span class="key">Left Arrow</span></td>
+				<td>Previous Card</td>
+			</tr>
+			<tr>
+				<td><span class="key">Right Arrow</span></td>
+				<td>Next Card</td>
+			</tr>
+			<tr>
+				<td><span class="key">Space</span></td>
+				<td>Record audio for the current flashcard.</td>
+			</tr>
+			<tr>
+				<td><span class="key">Enter</span></td>
+				<td>Listen to the current flashcard's audio.</td>
+			</tr>
+			<tr>
+				<td><span class="key">Ctrl + O</span></td>
+				<td>Import File (txt, csv)</td>
+			</tr>
+			<tr>
+				<td><span class="key">Ctrl + S</span></td>
+				<td>Export File (zip)</td>
+			</tr>
+			<tr>
+				<td><span class="key">Ctrl + Q</span></td>
+				<td>Quit Application</td>
+			</tr>
+		</tbody>
+	</table>
+
+</body>
+
+</html>

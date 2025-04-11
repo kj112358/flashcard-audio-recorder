@@ -867,6 +867,7 @@ function toggleEdit() {
   // set the inputText equal to the flashcard text when editMode is toggled on.
   if (isEditMode()) {
     flashInput.value = flashText.innerText;
+    flashInput.focus(); // Places the cursor inside the input field
   }
 }
 
@@ -930,7 +931,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Add event listener for keyboard shortcuts
   document.addEventListener('keydown', (event) => {
     if (isEditMode()) {
-      if (event.code === 'Enter') {
+      if (event.code === 'Enter' || event.code === 'Escape') {
         event.preventDefault();
         editCard();
       }
