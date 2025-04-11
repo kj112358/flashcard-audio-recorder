@@ -1,5 +1,12 @@
+# Ignore distributables
+out/
+
 # Ignore Visual Studio Code settings
 .vscode/
 
 # Ignore Node.js modules
 node_modules/
+
+# Ignore zip and txt files
+*.zip
+*.txt

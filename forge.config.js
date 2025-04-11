@@ -3,19 +3,15 @@ const { FuseV1Options, FuseVersion } = require('@electron/fuses');
 
 module.exports = {
   packagerConfig: {
-    asar: true,
-    platform: "win32",
-    arch: "x64"
+    asar: true
   },
   rebuildConfig: {},
   makers: [
     {
       name: '@electron-forge/maker-squirrel',
-      config: {},
-    },
-    {
-      name: '@electron-forge/maker-zip',
-      platforms: ['darwin'],
+      platforms: ['win32'],
+      shortcutName: 'Flashcard Audio Recorder',
+      config: {}
     },
     {
       name: '@electron-forge/maker-deb',
