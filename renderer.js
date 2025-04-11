@@ -125,16 +125,16 @@ function electronCopyTextToClipboard() {
 }
 
 function getFormattedDate() {
-  // Returns formatted date: 'yyyy-mm-dd-HH:MM:SS'
+  // Returns formatted date: 'yyyy-mm-dd_HH-MM-SS'
   let currentDate = new Date();
   const pad = (num) => String(num).padStart(2, '0');
-  return `${currentDate.getFullYear()}-${pad(currentDate.getMonth() + 1)}-${pad(currentDate.getDate())}`
-    + `-${pad(currentDate.getHours())}:${pad(currentDate.getMinutes())}:${pad(currentDate.getSeconds())}`;
+  return `_${currentDate.getFullYear()}-${pad(currentDate.getMonth() + 1)}-${pad(currentDate.getDate())}`
+    + `_${pad(currentDate.getHours())}-${pad(currentDate.getMinutes())}-${pad(currentDate.getSeconds())}`;
 }
 
 function removeFormattedDate(originalString) {
   // TODO: Still not the cleanest removal option, but I suppose it works for now. 
-  let pattern = /_\d{4}-\d{2}-\d{2}-\d{2}:\d{2}/i;
+  let pattern = /_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}/i; // YYYY-MM-DD_HH-MM-SS
   let formattedDate = originalString.match(pattern);
   return removeAfterLastDelim(originalString, formattedDate);
 }
@@ -249,10 +249,10 @@ async function importFile(filePath) {
   let importFileName = path.parse(importFilePath).name;
   let existingImportDir = path.join(baseDir, importFileName);
   let existingFilePath = path.join(existingImportDir, path.basename(importFilePath));
-  let newFileNameNoExt = removeFormattedDate(removeAfterFirstDelim(importFileName, `.${importFileType}`)) + '_' + getFormattedDate(); // /filename_yyyy-mm-dd-HH:MM:SS
+  let newFileNameNoExt = removeFormattedDate(removeAfterFirstDelim(importFileName, `.${importFileType}`)) + getFormattedDate(); // /filename_yyyy-mm-dd_HH-MM-SS
   let newFileName = `${newFileNameNoExt}.${importFileType}`;
-  let localImportDir = path.join(baseDir, newFileNameNoExt); // '/ElectronRecorder/filename_yyyy-mm-dd-HH:MM:SS'
-  let newFilePath = path.join(localImportDir, newFileName); // // '/ElectronRecorder/filename_yyyy-mm-dd-HH:MM:SS/filename_yyyy-mm-dd-HH:MM:SS.txt'
+  let localImportDir = path.join(baseDir, newFileNameNoExt); // '/ElectronRecorder/filename_yyyy-mm-dd_HH-MM-SS'
+  let newFilePath = path.join(localImportDir, newFileName); // // '/ElectronRecorder/filename_yyyy-mm-dd_HH-MM-SS/filename_yyyy-mm-dd_HH-MM-SS.txt'
   logger.debug(`importFileName ${importFileName}`);
   logger.debug(`baseDir ${baseDir} newFileNameNoExt ${newFileNameNoExt} localimportDir ${localImportDir} newFileName ${newFileName}`);
   logger.debug(`input dir ${baseDir}, importFilePath: ${importFilePath}, newFileNameNoExt: ${newFileNameNoExt}, newFilePath: ${newFilePath}`);
@@ -309,7 +309,7 @@ function createDirCopyFile(newDirectory, originalFilePath, newFileName = path.ba
   // Create a local dir, with the importFileName, if it doesn't already exist
   logger.debug(`creating Dir ${newDirectory}`);
   try {
-    fs.mkdirSync(newDirectory);
+    fs.mkdirSync(newDirectory, {recursive: true});
     logger.debug(`Dir created: ${newDirectory}`);
   } catch (err) {
     if (err.code === 'EEXIST') {
@@ -578,7 +578,7 @@ function handleProcessingError(err) {
 function generateFlashcardAudioDetails(appendTimestamp = false, flashcard = currentCard) {
   // Generates a flashcardName and path using the current importPath and fileName
   // appendTimestamp busts the cache, which ensures that the listen function will play the latest version of the audioFile. 
-  let suffix = appendTimestamp ? "_" + getFormattedDate() : "";
+  let suffix = appendTimestamp ? getFormattedDate() : "";
   let fileName = audioPathSettings.filePrefix + flashcard.text + suffix + audioPathSettings.formatType;
   // New flashcards use the path from the current importPath
   let filePath = path.join(path.dirname(importFilePath), fileName);
