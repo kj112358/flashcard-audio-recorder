@@ -7,28 +7,12 @@ const archiver = require('archiver');
 const unzipper = require('unzipper');
 const { ipcRenderer, clipboard } = require('electron');
 const logger = require('./logger');
-// TODO: IMPORT BUG OVERWRITES OTHER EXPORT FILE.
 
 let sideEnum = {
   0: "front",
   1: "back"
 };
 
-// todo: 
-// import/export
-// Edit card values. 
-// Fix live reload
-// Refactor
-// Debug (lots of weird bugs after stopping on card)
-
-// optional todo:
-// Refactor and research offline TTS (ignoring google, cordova, or other paid || keys)
-// Double-sided card support. In-line, or split into different cards
-
-// Config 
-// - modify audio format & path (original should still be listenable and overwitten after save), 
-// - toggle between in-line and split (code needs to adjust dynamically)
-// - Read and export to anki packages (maybe later. still unsure how these are formatted.. table vs \t)
 let flashCardElementId = "flashcard";
 let counterDiv;
 let listenButton;
@@ -43,9 +27,6 @@ let audioPathSettings = {
   formatType: ".wav"
 };
 let audioPrefix = "sound:";
-
-// Ex: "audio/wav". Unused
-// let blobAudioType = "audio/" + audioPathSettings.formatType.replace('.', '');
 
 // Init vars
 let baseDir;
@@ -149,7 +130,6 @@ function getFormattedDate() {
   const pad = (num) => String(num).padStart(2, '0');
   return `${currentDate.getFullYear()}-${pad(currentDate.getMonth() + 1)}-${pad(currentDate.getDate())}`
     + `-${pad(currentDate.getHours())}:${pad(currentDate.getMinutes())}:${pad(currentDate.getSeconds())}`;
-  // return new Date().toISOString().replace('T', '-').slice(0, 19);
 }
 
 function removeFormattedDate(originalString) {
@@ -159,27 +139,24 @@ function removeFormattedDate(originalString) {
   return removeAfterLastDelim(originalString, formattedDate);
 }
 
-function removeAfterFirstDelim(originalString, firstDelim){
+function removeAfterFirstDelim(originalString, firstDelim) {
   const firstIndex = originalString.indexOf(firstDelim);
   if (firstIndex === -1) {
-    // If there is no match, return the original string
     return originalString;
   }
   return originalString.substring(0, firstIndex);
 }
 
 function removeAfterLastDelim(originalString, lastDelim) {
-    const lastIndex = originalString.lastIndexOf(lastDelim);
-    if (lastIndex === -1) {
-      // If there is no match, return the original string
-      return originalString;
-    }
-    return originalString.substring(0, lastIndex);
+  const lastIndex = originalString.lastIndexOf(lastDelim);
+  if (lastIndex === -1) {
+    return originalString;
+  }
+  return originalString.substring(0, lastIndex);
 }
 
 function unzipFile(zipFilePath, outputDir) {
   return new Promise((resolve, reject) => {
-    // Create a readable stream from the ZIP file
     fs.createReadStream(zipFilePath)
       .pipe(unzipper.Extract({ path: outputDir }))
       .on('close', () => {
@@ -218,10 +195,10 @@ function findFirstTextOrCsvFile(directoryPath) {
       }
     }
 
-    return null; // No text or CSV files found
+    return null;
   } catch (err) {
     console.error('Error reading directory:', err);
-    return null; // Return null in case of an error
+    return null;
   }
 }
 
@@ -295,7 +272,6 @@ async function importFile(filePath) {
   exportFile('config');
 }
 
-// TODO: Implement & test
 async function electronExportFile() {
   const filters = [{ name: 'Zip file', extensions: ['zip'] }];
   const defaultFileName = `${path.parse(importFilePath).name}.zip`;
@@ -309,7 +285,7 @@ async function electronExportFile() {
   let exportFileName = path.basename(exportPath);
   const sourceDir = path.dirname(importFilePath) === '.' ? __dirname : path.dirname(importFilePath);
   logger.info(`Selected Export file parentDir: ${exportParentDir} from sourceDir ${sourceDir} with filename ${exportFileName}`);
-  // /a/b/c and /a/b/c.zip is fine.  but /a/b/c/c.zip is not. The zipFile's parentDir must not be at or below the sourceDir level
+  // zipping dir '/a/b/c': /a/b/c.zip is fine, /a/b/c/c.zip is invalid, as the output zip is within the input zip dir.
   if (exportParentDir.includes(sourceDir)) {
     logger.error("Can't zip a folder into itself. Please zip to a different dir.");
   } else {
@@ -319,9 +295,6 @@ async function electronExportFile() {
 }
 
 function filesMatch(file1Path, file2Path) {
-  // Read the contents of both files
-  // Compare the contents
-
   try {
     const file1Contents = fs.readFileSync(file1Path);
     const file2Contents = fs.readFileSync(file2Path);
@@ -359,8 +332,6 @@ function createDirCopyFile(newDirectory, originalFilePath, newFileName = path.ba
 }
 
 async function exportToZip(inputDir, zipDetails) {
-
-  // TODO: Package, clean the code, and add tests? Or just full send and to this later?
   const outputDir = zipDetails.dir;
   const outputPath = path.join(outputDir, zipDetails.name);
   const output = fs.createWriteStream(outputPath);
@@ -390,12 +361,9 @@ async function exportToZip(inputDir, zipDetails) {
   await archive.finalize(); // Ensure the archive is finalized
 }
 
-// Function to write JSON data to the config file
 function writeUserConfig(data) {
   try {
-    // Convert the data to a JSON string
     const jsonData = JSON.stringify(data, null, 2); // Pretty print with 2 spaces
-    // Write the JSON string to the file
     logger.debug(`Writing configFile ${configFilePath} with data ${jsonData}`);
     fs.writeFileSync(configFilePath, jsonData);
     logger.info('Configuration written to file:', configFilePath);
@@ -404,18 +372,16 @@ function writeUserConfig(data) {
   }
 }
 
-// Function to read JSON data from the config file (creates an empty configFile if one doesn't exist)
+// Read from the config jSON file (creates an empty config file if one doesn't exist)
 function readConfig() {
   try {
-    // Read the JSON data from the file
     const jsonData = fs.readFileSync(configFilePath, 'utf8');
-    // Parse the JSON string into an object
     const data = JSON.parse(jsonData);
     logger.info('Configuration read from file:', data);
     return data;
   } catch (error) {
     logger.error('Error reading config file:', error);
-    return null; // Return null if there was an error
+    return null;
   }
 }
 
@@ -469,10 +435,10 @@ function deleteAudioFile(oldAudioFilePath) {
 }
 
 function getCardInfo(cardBlob) {
-  //	logger.debug(`regex input: ${cardBlob}`);
+  logger.debug(`regex input: ${cardBlob}`);
   regex = /^(.*?)(?:\[sound\:(.*?)\])?(?=$)/;
   regexResult = cardBlob.match(regex);
-  //	logger.debug(`regex result: ${regexResult}`);
+  logger.debug(`regex result: ${regexResult}`);
   textVal = regexResult[1];
   audioFileNameVal = regexResult.length > 2 ? regexResult[2] : null;
   return { text: textVal, audioFileName: audioFileNameVal };
@@ -563,7 +529,6 @@ function processTxtFile(readStream) {
 
   rl.on('close', () => {
     logger.debug('Tab-delimited file processing completed. Flashcards: ' + flashcards);
-    // TODO: Refactor this gigantic mess.
     copyAllFlashcardAudio();
     updateFlashcard();
     // TODO: Refactor and ideally separate duplicate business logic.
@@ -612,7 +577,6 @@ function handleProcessingError(err) {
 
 function generateFlashcardAudioDetails(appendTimestamp = false, flashcard = currentCard) {
   // Generates a flashcardName and path using the current importPath and fileName
-
   // appendTimestamp busts the cache, which ensures that the listen function will play the latest version of the audioFile. 
   let suffix = appendTimestamp ? "_" + getFormattedDate() : "";
   let fileName = audioPathSettings.filePrefix + flashcard.text + suffix + audioPathSettings.formatType;
@@ -665,7 +629,6 @@ function updateDisplay() {
 
 function updateFlaschardAudioPath(flashcard = currentCard) {
   // Load audio file if it exists, otherwise empty the card.src and disable listenButton
-
   audioFilePath = getOrGenerateFlashcardAudioDetails(false, flashcard).path;
   logger.debug(`looking for path ${audioFilePath} and hoping it matches ${flashcard.audioFileName}`);
   if (fs.existsSync(audioFilePath)) {
@@ -711,11 +674,6 @@ function toggleRecording() {
     logger.debug('toggle recording stop.');
     stopRecording();
   }
-}
-
-function tts() {
-  const utterance = new SpeechSynthesisUtterance(currentCard.text);
-  speechSynthesis.speak(utterance);
 }
 
 function toggleListening() {
@@ -776,22 +734,6 @@ function rewriteAudioFile(buffer = null, copy = false, card = currentCard) {
   prevFileDetails = getFlashcardAudioDetails(appendTimestamp = true, card)
   prevFilePath = prevFileDetails.path;
   newFileDetails = generateFlashcardAudioDetails(appendTimestamp = true, card);
-
-  /**
-   * BUGS
-   * Importing an existing directory - 
-   *  duplicates audioFiles
-   * 
-   */
-
-  /** TODO
-   * Importing txt file that already has a localDir
-   * Txt file therefore has the same txt name and likely existing audio. 
-   * Audio should match the dirName, as that's how it will be looked up, no? 
-   * 
-   * ,/ We now skip if the file in question already exists and it is a move/rename.
-   */
-
   newFilePath = newFileDetails.path;
   let action = 'rewriteAudioFile called';
   logger.debug(`${action} Prev: ${prevFilePath} New: ${newFilePath}`);
@@ -809,32 +751,11 @@ function rewriteAudioFile(buffer = null, copy = false, card = currentCard) {
       deleteAudioFile(prevFilePath);
       logger.debug(`finished ${action}`);
     } else {
-      if(newFilePath == prevFilePath || fs.existsSync(newFilePath) || !prevFilePath){
+      if (newFilePath == prevFilePath || fs.existsSync(newFilePath) || !prevFilePath) {
         logger.info(`Not copying/renaming the audio file with prevPath ${prevFilePath} and newPath ${newFilePath}. Paths are either identical, the proposed copy already exists, or the prev path is missing.`);
         return;
       }
-      /** TONIGHT
-       * Export windows and fix linux (change installationDir in forge-config to do /opt or /usr/share so I can read/write freely)
-       * Bug- left/right when listening has a delay after stopping record and auto-listening.
-       * Optional: Merge feature (allows splitting)
-       *  */
-      // TODO: This Logic is confusing and messy. 
-      // rename- renames oldPath to newPath, but only if there isn't an existing newPath (possibly confusing - it won't replace an existing file of the same name. That's what rewrite is for.)
-      // copy - CONFUSING TO USERS - Only copies to newPath IF there isn't an existing file of the same name AND the oldPath isn't in the same directory as the newPath. 
-      // This type of IF hell is also confusing to devs- adds nested complexity, 2^n exponential usecase increase. 
-      // Still ugly, but instead of dirCheck maybe it's better to trim the format and ignore existing names (In the event of imports from other dirs with same .txt name). 
-      // Maybe same txt name should create a new folder? Eh, maybe v2?
-      // Currently when importing a file - 
-      //    it WILL create a local dir/file of the same name  
-      //    it WILL overwrite the existing file (but keep the same filename and flashcardNames).
-      //    it WILL copy relevant audiofiles over, if they are adjacent to import file. 
-      //    it WONT overwrite existing audioFiles (but it will rename them when copying to the localDir for the first time)
-      //    HOW will it recover 2 different timestamp divergences? Half are recorded to 1-1 and half are on 1-2? 
-      // Merge conflict - what if files get renamed, added, removed. 
-      // Better solution - something flexible and reasonable. KISS  (Merge option- joins flashcards with audio (keeping orig), adds new flashcards (edits would be added as new))
-      // This would prob do version instead of date. Always 1 version ahead of the latest. Ex: v3, v4 turns to v5 v8, v1 goes to v9. Uses opened file's name.
-      // TODO: Fix bug. Ideal logic: lol idk wtf i was thinking here. 
-        // 
+      // TODO: Simplify
       if (copy && path.dirname(newFilePath) == path.dirname(prevFilePath) && removeFormattedDate(path.basename(newFilePath)) == removeFormattedDate(path.basename(prevFilePath))) {
         logger.info(`Skipping audioFileCopy, as the copy location is in the same parent directory. Existing copy: ${prevFilePath} was not copied to ${newFilePath}`);
         return;
@@ -870,8 +791,7 @@ async function stopRecording(autoStopped = false) {
   document.getElementById("listenButton").disabled = false;
 
   if (recorder) {
-    // TODO: Refactor or remove
-    // TODO: Fix bug. Either requires timeout or limits the speed of recorder (left/right arrow bug). 
+    // TODO: Refactor or remove. Also fix bug: It currently requires timeout (left/right arrow bug/delay if the user is fast). Removing the timeout cuts the audio recording short (e.g. the recording will be missing the last second or 2). 
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         recorder.stopRecording(async () => {
@@ -951,7 +871,6 @@ function toggleEdit() {
 }
 
 function editCard() {
-  // TODO: Test
   currentCard.text = flashInput.value;
   rewriteAudioFile(); // Renames the audio file, writes the new card info to exportFile
   toggleEdit();
