@@ -950,6 +950,7 @@ function isComplete() {
 function editCard() {
   if (isEditMode()) {
     currentCard.text = flashInput.value; // Edit mode is active and about to be toggled off. Save the input value to the card.
+    flashText.innerText = currentCard.text;
   }
   rewriteAudioFile(); // Renames the audio file, writes the new card info to exportFile
   toggleEdit();
