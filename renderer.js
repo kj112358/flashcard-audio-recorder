@@ -37,12 +37,20 @@ let importFileType;
 let currentCard;
 let userConfig;
 let currentIndex;
+let lastCheckedIndex = -1;
+let celebrated;
 let flashcards;
 let side;
 let flashcardTextId = "flashcard";
 let flashcardInputID = "flashcard-edit";
 let flashInput;
 let flashText;
+let counterTextId = "currentFlashcardIndex";
+let counterInputID = "currentFlashcardIndex-edit";
+let counterText;
+let counterInput;
+let modal;
+let closeModalButton;
 
 let defaultListenText = "Listen";
 let defaultRecordText = "Start Recording";
@@ -59,7 +67,9 @@ function processUserConfig() {
     userConfig = {
       listenAfterRecord: true,
       listenAfterLoad: false,
-      recentImportPath: defaultImportExportFile
+      recentImportPath: defaultImportExportFile,
+      recentIndex: 0,
+      recentSide: 0
     }
   }
   ipcRenderer.send('update-on-preference', userConfig);
@@ -309,7 +319,7 @@ function createDirCopyFile(newDirectory, originalFilePath, newFileName = path.ba
   // Create a local dir, with the importFileName, if it doesn't already exist
   logger.debug(`creating Dir ${newDirectory}`);
   try {
-    fs.mkdirSync(newDirectory, {recursive: true});
+    fs.mkdirSync(newDirectory, { recursive: true });
     logger.debug(`Dir created: ${newDirectory}`);
   } catch (err) {
     if (err.code === 'EEXIST') {
@@ -389,7 +399,10 @@ function exportFile(exportType = "txt") {
   if (exportType == "config") {
     // Persist userConfig, including the most recent input path (bad practice having hidden config settings?).
     logger.debug(`configFile ${configFilePath}`);
+    // Save the current state to the config file (current path, flashcard#, side)
     userConfig.recentImportPath = importFilePath;
+    userConfig.recentIndex = currentIndex;
+    userConfig.recentSide = side;
     ipcRenderer.send('update-listenAfterLoad-preference', userConfig);
     writeUserConfig(userConfig);
     return;
@@ -435,6 +448,10 @@ function deleteAudioFile(oldAudioFilePath) {
 }
 
 function getCardInfo(cardBlob) {
+  if (!cardBlob) {
+    return null; // There was a null value on the front/back of the card.
+  }
+
   logger.debug(`regex input: ${cardBlob}`);
   regex = /^(.*?)(?:\[sound\:(.*?)\])?(?=$)/;
   regexResult = cardBlob.match(regex);
@@ -462,6 +479,11 @@ function getCard(row, fileType = "csv") {
   }
   logger.debug("Card blobs: " + JSON.stringify(cardBlobs));
   card = { front: getCardInfo(cardBlobs.front), back: getCardInfo(cardBlobs.back) };
+
+  if (!card.front || !card.back) {
+    return null; // Missing a side nullifies the entire card.
+  }
+
   return card;
 }
 
@@ -523,8 +545,12 @@ function processTxtFile(readStream) {
 
   rl.on('line', (line) => {
     card = getCard(line, "txt");
-    logger.debug("loaded card: " + JSON.stringify(card));
-    flashcards.push(card);
+    if (card) {
+      logger.debug("loaded card: " + JSON.stringify(card));
+      flashcards.push(card);
+    } else {
+      logger.error('Error loading flashcard - skipping line: ' + line);
+    }
   });
 
   rl.on('close', () => {
@@ -547,11 +573,15 @@ function processCsvFile(readStream) {
     .pipe(csv())
     .on('data', (row) => {
       card = getCard(row, "csv");
-      logger.debug("loaded card: " + JSON.stringify(card));
-      flashcards.push(card);
+      if (card) {
+        logger.debug("loaded card: " + JSON.stringify(card));
+        flashcards.push(card);
+      } else {
+        logger.error('Error loading flashcard - skipping row: ' + row);
+      }
     })
     .on('end', () => {
-      logger.debug("Flashcards: " + flashcards);
+      // logger.debug("Flashcards: " + flashcards);
       // TODO: Refactor this gigantic mess. Especially the audio copy
       copyAllFlashcardAudio();
       updateFlashcard();
@@ -654,11 +684,12 @@ function updateFlashcard() {
 
     // Display the currentCard's text in the view
     currentCard = flashcards[currentIndex][sideEnum[side]];
-    logger.debug("flashcards: " + flashcards + ", card: " + JSON.stringify(currentCard));
+    logger.debug("Updating Current card: " + JSON.stringify(currentCard));
     document.getElementById('flashcard').innerText = currentCard.text;
 
     // Load the currentCard's audioFile, if it exists (and set audioElement src and enable listenButton). 
     updateFlaschardAudioPath(currentCard);
+    celebrateIfComplete();
 
   } else {
     document.getElementById('flashcard').innerText = "End of Flashcards";
@@ -779,7 +810,7 @@ function rewriteAudioFile(buffer = null, copy = false, card = currentCard) {
   // Update the card's audioInfo, then write to the output file. 
   card.audioFileName = newFileDetails.name;
   updateFlashcard();
-  logger.debug(`exporting card ${card.front} with name ${card.audioFileName}`);
+  logger.debug(`exporting card ${card} with name ${card.audioFileName}`);
   exportFile(importFileType);
 
 }
@@ -833,6 +864,7 @@ async function nextCard() {
     if (userConfig.listenAfterLoad) {
       startListening();
     }
+    exportFile('config');
 
   }
 }
@@ -851,6 +883,7 @@ async function previousCard() {
     if (userConfig.listenAfterLoad) {
       startListening();
     }
+    exportFile('config');
 
   }
 }
@@ -871,10 +904,107 @@ function toggleEdit() {
   }
 }
 
+function celebrateIfComplete() {
+  if (isComplete() && !celebrated) {
+    logger.debug(`Celebration time!`);
+    celebrated = true;
+    modal.classList.remove('hidden');
+    document.getElementById('modal-img').src="assets/danke.gif";
+    document.getElementById('modal-text').innerHTML="Daghang Salamat LJ!";
+  }
+}
+
+function isComplete() {
+  let isComplete = true;
+  if (!flashcards || !flashcards.length) { return false; }
+
+  // Cards are complete if no incomplete card exists. An incomplete card is a card that's missing a text value or audioFile.
+  for ([curCardIndex, curCard] of flashcards.entries()) {
+    // Skip card if it's equal or less than the lastChecked cardIndex (lastChecked defaults to -1 for the case of 0)
+    if (curCardIndex <= lastCheckedIndex) {
+      continue; // Assuming previously checked cards are still good (audio should never be deleted mid-app. This should help performance).
+    }
+
+    logger.info(`Celebration ${JSON.stringify(curCard)}`);
+    frontCard = curCard.front;
+    backCard = curCard.back;
+    frontFileDetails = getFlashcardAudioDetails(appendTimestamp = true, frontCard);
+    backFileDetails = getFlashcardAudioDetails(appendTimestamp = true, backCard);
+    
+    cardHasText = frontCard.text && backCard.text
+      && frontFileDetails && frontFileDetails.path
+      && backFileDetails && backFileDetails.path;
+    isComplete = cardHasText
+      && fs.existsSync(frontFileDetails.path) && fs.existsSync(backFileDetails.path);
+    logger.debug(`Celebration ${JSON.stringify(frontCard)}, ${JSON.stringify(backCard)} frontDetails ${JSON.stringify(frontFileDetails)} backDetails ${JSON.stringify(backFileDetails)}`);
+    if (!isComplete) {
+      logger.debug(`Celebration not complete. Ending at card ${curCardIndex}: ${JSON.stringify(curCard)}. cardHasText ${cardHasText}`);
+      return false;
+    } else {
+      lastCheckedIndex = curCardIndex;
+    }
+  }
+  return true;
+}
+
 function editCard() {
-  currentCard.text = flashInput.value;
+  if (isEditMode()) {
+    currentCard.text = flashInput.value; // Edit mode is active and about to be toggled off. Save the input value to the card.
+  }
   rewriteAudioFile(); // Renames the audio file, writes the new card info to exportFile
   toggleEdit();
+}
+
+// TODO: Template pattern. DRY violation with the above edit
+
+function isEditCounterMode() {
+  return counterInput.style.display !== 'none';
+}
+
+function toggleEditCounter() {
+  // Toggle visibility for text and input.
+  counterInput.style.display = counterInput.style.display == "none" ? "" : "none";
+  counterText.style.display = counterText.style.display == "none" ? "" : "none";
+
+  // Edit mode was off and is about to be toggled on. Set the inputValue to the currentIndex.
+  if (isEditCounterMode()) {
+    counterInput.value = counterText.innerText;
+    counterInput.focus(); // Places the cursor inside the input field
+  }
+}
+
+async function editCounter() {
+  // Edit mode is on and is about to be toggled off. Set the currentIndex to the inputValue (after validation).
+  if (isEditCounterMode()) {
+    let newIndexInput = counterInput.value;
+    let newFlashcardIndex = 0;
+    let validCounterValue = false;
+    if (newIndexInput != null) {
+      logger.info(`Attempting to jump to flashcard number ${newIndexInput}`);
+      // Valid newFlashcardIndex must be a non-null, positive integer that matches an existing flashcard number (0,lengthOfFlashcards].
+      newFlashcardIndex = parseInt(newIndexInput);
+      logger.info(`New flashcard number ${newFlashcardIndex}`);
+      validCounterValue = !isNaN(newFlashcardIndex) && newFlashcardIndex > 0 && newFlashcardIndex <= flashcards.length;
+    }
+    if (validCounterValue) {
+      currentIndex = newFlashcardIndex - 1; // Flashcard array starts at 0, but appears to start at 1 to the user.
+      // counterText.value = currentIndex;
+      side = 0;
+
+      stopListening();
+      await stopRecording(autoStopped = true);
+
+      updateFlashcard();
+      exportFile('config');
+      if (userConfig.listenAfterLoad) {
+        startListening();
+      }
+    } else {
+      logger.error(`invalid flashcard number ${newIndexInput}. Exiting edit mode and remaining on the current card.`);
+    }
+  }
+
+  toggleEditCounter();
 }
 
 async function init(load = true) {
@@ -894,6 +1024,7 @@ async function init(load = true) {
   flashcards = [];
   currentCard = {};
   currentIndex = 0;
+  lastCheckedIndex = -1;
   side = 0;
   document.getElementById(`${sideEnum[(side) % 2]}-indicator`).classList.add('hidden');
   document.getElementById(`${sideEnum[(side + 1) % 2]}-indicator`).classList.add('hidden');
@@ -901,6 +1032,9 @@ async function init(load = true) {
   document.getElementById("recordButton").disabled = true; // Can't record if there aren't any flashcards. 
 
   if (load) {
+    currentIndex = userConfig.recentIndex;
+    side = userConfig.recentSide;
+    logger.error(`Loading index from userConfig. Index: ${currentIndex}, side:${side}`);
     loadFlashcards();
   }
 }
@@ -910,11 +1044,23 @@ document.addEventListener('DOMContentLoaded', () => {
   listenButton = document.getElementById('listenButton');
   flashInput = document.getElementById(flashcardInputID);
   flashText = document.getElementById(flashcardTextId);
+  counterInput = document.getElementById(counterInputID);
+  counterText = document.getElementById(counterTextId);
+  modal = document.getElementById('modal');
+  closeModalButton = document.getElementById('closeModal');
 
   document.getElementById('recordButton').addEventListener('click', toggleRecording);
   document.getElementById('previousButton').addEventListener('click', previousCard);
   document.getElementById('nextButton').addEventListener('click', nextCard);
   listenButton.addEventListener('click', toggleListening);
+  closeModalButton.addEventListener('click', () => { modal.classList.add('hidden'); });
+
+  window.onclick = function(event) {
+      if (event.target === modal) {
+          modal.classList.add('hidden')
+      }
+  }
+
   flashInput.addEventListener('blur', () => {
     // Skip if element is no longer visible
     if (flashInput.offsetParent === null) {
@@ -922,6 +1068,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     editCard(); // only runs if the input is still visible
+  });
+  // TODO: Major DRY violation.
+  counterInput.addEventListener('blur', () => {
+    if (counterInput.offsetParent === null) {
+      return; // element is hidden (e.g. display: none)
+    }
+
+    editCounter();
   });
 
   audioElement.addEventListener('ended', () => {
@@ -934,6 +1088,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (event.code === 'Enter' || event.code === 'Escape') {
         event.preventDefault();
         editCard();
+      }
+    } else if (isEditCounterMode()) {
+      if (event.code === 'Enter' || event.code === 'Escape') {
+        event.preventDefault();
+        editCounter();
       }
     }
     else if (event.code === 'Space') {
@@ -948,6 +1107,9 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (event.code === 'ArrowLeft') {
       event.preventDefault();
       previousCard();
+    } else if (event.code === 'Escape') {
+      event.preventDefault();
+      editCounter();
     }
   });
 

@@ -23,7 +23,8 @@ module.exports = {
     'renderer.js', // Include your renderer.js file
     'logger.js',
     'index.html',
-    'style.css'
+    'style.css',
+    "assets/**/*" // Include all assets
     // Include other necessary files or directories
   ],
   plugins: [

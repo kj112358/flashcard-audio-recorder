@@ -25,6 +25,7 @@
 
         <div class="flashcard-counter-container hidden">
             <span id="currentFlashcardIndex"></span>
+            <input style="display: none" id="currentFlashcardIndex-edit"></input>
             /
             <span id="maxFlashcardIndex"></span>
         </div>
@@ -36,6 +37,13 @@
             <div class="indicator hidden" id="back-indicator">
                 <i class="fas fa-book-open"></i> <!-- Icon for front -->
             </div>
+        </div>
+    </div>
+    <div id="modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close" id="closeModal">&times;</span>
+            <img id="modal-img" alt="Loading..." />
+            <div id = "modal-text" class="overlay-text"></div>
         </div>
     </div>
 </body>
