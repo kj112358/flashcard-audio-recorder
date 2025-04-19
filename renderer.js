@@ -142,6 +142,22 @@ function getFormattedDate() {
     + `_${pad(currentDate.getHours())}-${pad(currentDate.getMinutes())}-${pad(currentDate.getSeconds())}`;
 }
 
+function getFormattedFileName(appendTimestamp, flashcard) {
+  let suffix = appendTimestamp ? getFormattedDate() : "";
+  let fileName = audioPathSettings.filePrefix + flashcard.text + suffix;
+
+  // Replace invalid characters with an empty string
+  let invalidChars = "\\\\/:*?\"<>|."
+  const regex = new RegExp(`[${invalidChars}]`, 'g');
+  let fullFileName = fileName.replace(regex, '');
+  fullFileName = fullFileName.split('\0').join(''); // Remove null characters if present
+
+  // fileName with extension
+  fullFileName = fullFileName + audioPathSettings.formatType;
+  return fullFileName;
+  
+}
+
 function removeFormattedDate(originalString) {
   // TODO: Still not the cleanest removal option, but I suppose it works for now. 
   let pattern = /_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}/i; // YYYY-MM-DD_HH-MM-SS
@@ -608,8 +624,7 @@ function handleProcessingError(err) {
 function generateFlashcardAudioDetails(appendTimestamp = false, flashcard = currentCard) {
   // Generates a flashcardName and path using the current importPath and fileName
   // appendTimestamp busts the cache, which ensures that the listen function will play the latest version of the audioFile. 
-  let suffix = appendTimestamp ? getFormattedDate() : "";
-  let fileName = audioPathSettings.filePrefix + flashcard.text + suffix + audioPathSettings.formatType;
+  let fileName = getFormattedFileName(appendTimestamp, flashcard);
   // New flashcards use the path from the current importPath
   let filePath = path.join(path.dirname(importFilePath), fileName);
   let fileDetails = { path: filePath, name: fileName };
